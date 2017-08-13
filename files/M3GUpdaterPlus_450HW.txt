@@ -1,0 +1,26 @@
+M3i Zero GMP-Z003 Updater Plus 450HW
+Notes:
+*This upgrade package only supports M3i Zero card (GMP-Z003 model), the code can be found on the top right of the label of the card.
+*After applying this package, you should reapply the "M3i Zero Core data file V4.5.0" package to make it compatible with 3DS 4.5.0-10x firmware.
+*Do NOT use "M3i Zero Core data file V4.5.0" to upgrade directly, you must run "M3GUpdaterPlus_450HW.nds" first.
+*If wrong steps were taken or it is a brand new M3i Zero, please do upgrading by using "M3i Zero Core data file V4.2.0" first and then run "M3GUpdaterPlus_450HW.nds".
+*In order to update the firmware of the M3i Zero card, you must have one of these consoles (NDS, NDS Lite or NDSi NDSi(XL)). After a successful run of the upgrade package, the updated M3i Zero card should be able to boot up properly in any NDS console included 3DS.
+*Please make sure that the battery of your console is sufficient to finish the upgrade. Keep your console still during the upgrading.
+*For the M3i Zero card users with a model other than GMP-Z003, please use core data file V1.7.2 or other newer version.
+
+Procedures:
+1. i) Copy the “M3GUpdaterPlus_450HW.nds” into the microSD card.
+ii) Copy the "system" files into the microSD card or install the "M3SAKURA" system 
+(For the detail of installing the system or "M3SAKURA", please read the corresponding instruction.)
+2. Insert microSD card into M3i Zero card.
+3. Insert M3i Zero card into one of the following consoles (NDS, NDS Lite or NDSi NDSi(XL)) 
+4. Turn on the console and the M3 software should run automatically. Select the "M3GUpdaterPlus_450HW.nds" file and press [A] to launch it.
+5. Follow the instructions on the screen or press [start] twice to start the upgrading.
+6. The "Updating success" message will be displayed on the screen if the updated process is success.
+7. Once finished, you can take out the M3i Zero, and use the Power Supply Cable to upgrade "Core data file V4.5.0".
+
+
+
+
+M3i Zero Core data file V4.5.0
+*Never use "M3i Zero Core data file V4.5.0" to upgrade directly, you must run "M3GUpdaterPlus_450HW.nds" first.
