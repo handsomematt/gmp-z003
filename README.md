@@ -6,7 +6,7 @@ it's firmware.
 ## Hardware
 
 ![Image of the carts PCB](PCB.jpg)
-![Image of the PIC](PIC.jpg)
+![Image of the FPGA](FPGA.jpg)
 
 ### Flash Memory
 
