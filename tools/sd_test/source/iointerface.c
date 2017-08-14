@@ -68,7 +68,8 @@ void ioM3LogicCardRead(u32 address, u32 *destination, u32 length)
   command[5] = (address >> 16) & 0xff;
   command[4] = (address >> 8)  & 0xff;
   command[3] =  address        & 0xff;
-  command[2] = 0;
+  // command[2] = 0;
+  command[2] = 0xA0;
   command[1] = 0;
   command[0] = 0;
   ioM3CardWaitReady(0xa7586000, command); // request
