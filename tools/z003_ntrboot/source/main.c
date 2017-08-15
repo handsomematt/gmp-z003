@@ -174,6 +174,15 @@ void write_to_flash(u32 offset, u8 *source, u32 length)
 	iprintf("\n");
 }
 
+u32 getChipID()
+{
+	u8 cmdChipID[8] = {0, 0, 0, 0, 0, 0, 0, 0x90};
+	u32 ret;
+
+	cardPolledTransfer(0xa7586000, &ret, 1, cmdChipID);
+	return ret;
+}
+
 
 int main(void) {
 	consoleDemoInit();
@@ -195,6 +204,7 @@ int main(void) {
 	cardInfo = setup_card();
 	iprintf("card Type: %04X\n", cardInfo);
 
+	iprintf("chipid: %08lX\n", getChipID());
 
 	if (cardInfo != 0x5AA5)
 	{
@@ -208,11 +218,11 @@ int main(void) {
 
 	u8 *flash_buffer = (u8*) malloc(0x200 * 0x1000);
 
-	iprintf("1. reading flash\n");
+	iprintf("reading flash\n");
 	read_blocks(0xF0, 0, flash_buffer, 0x1000);
 	display_hex(flash_buffer, 1);
 
-	iprintf("2. saving flash...");
+	iprintf("saving flash...");
 	
 	FILE* fp = fopen("before_flash.bin", "wb");
 	fwrite(flash_buffer, 0x200, 0x1000, fp);
@@ -243,7 +253,7 @@ int main(void) {
 	waitButtonA();
 
 	memcpy(flash_buffer + 0x1000, (u8*)blowfish_retail_bin, 0x1048);
-	memcpy(flash_buffer + 0x9E00, firm, firm_size);
+	memcpy(flash_buffer + 0x7E00, firm, firm_size);
 
 	iprintf("erasing");
 
@@ -278,11 +288,10 @@ int main(void) {
 
 	flash_buffer = (u8*) malloc(0x200 * 0x1000);
 
-	iprintf("1. reading flash\n");
 	read_blocks(0xF0, 0, flash_buffer, 0x1000);
 	display_hex(flash_buffer, 1);
 
-	iprintf("2. saving flash...");
+	iprintf("saving result flash...");
 	
 	fp = fopen("after_flash.bin", "wb");
 	fwrite(flash_buffer, 0x200, 0x1000, fp);
