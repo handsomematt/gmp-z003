@@ -115,7 +115,7 @@ $(OUTPUT).nds	: 	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 
 $(OUTPUT).nds: $(OUTPUT).elf
-	ndstool -h 0x200 -c $@  -b $(GAME_ICON) "z003dump;" -9 $(OUTPUT).elf
+	ndstool -c $@  -b $(GAME_ICON) "z003dump;" -9 $(OUTPUT).elf
 	@echo built PROPERLY ... $(notdir $@)
  
 #---------------------------------------------------------------------------------

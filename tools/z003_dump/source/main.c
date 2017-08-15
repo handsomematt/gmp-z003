@@ -73,6 +73,17 @@ void dump(u8 type, u32 offset, u32 blocks, char* filename)
 		u32_buffer += 0x80;
 	}
 
+	for(int y=0; y<8; y++)
+	{
+		for (int x=0; x<8; x++)
+			iprintf("%02x ", buffer[y*8 + x]);
+		for (int x=0; x<8; x++)
+			if (buffer[y*8 + x] >= 32 && buffer[y*8 + x] <= 127)
+				iprintf("%c", buffer[y*8 + x]);
+			else
+				iprintf(".");
+	}
+
 	iprintf("done, writing to file..");
 
 	FILE* fp = fopen(filename, "wb");
@@ -101,9 +112,9 @@ int main(void) {
 
 	if (cardInfo != 0x5AA5)
 	{
-		iprintf("unsupported, expected 0x5AA5\n");
+		iprintf("unsupported, expected 0x5AA5 press A to continue anyway\n");
 		waitButtonA();
-		return 0;
+		//return 0;
 	}
 
 	iprintf("press A to begin dumping\n");
