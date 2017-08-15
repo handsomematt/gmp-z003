@@ -206,7 +206,7 @@ int main(void) {
 	iprintf("press A to begin\n\n");
 	waitButtonA();
 
-	/*u8 *flash_buffer = (u8*) malloc(0x200 * 0x1000);
+	u8 *flash_buffer = (u8*) malloc(0x200 * 0x1000);
 
 	iprintf("1. reading flash\n");
 	read_blocks(0xF0, 0, flash_buffer, 0x1000);
@@ -214,19 +214,17 @@ int main(void) {
 
 	iprintf("2. saving flash...");
 	
-	FILE* fp = fopen("gmpz003_flash.bin", "wb");
+	FILE* fp = fopen("before_flash.bin", "wb");
 	fwrite(flash_buffer, 0x200, 0x1000, fp);
 	fclose(fp);
 
-	free(flash_buffer);
-
-	iprintf(" done\n\n");*/
+	iprintf(" done\n\n");
 
 	iprintf("reading ntr firm file");
-	FILE* fp = fopen("boot9strap_ntr.firm","rb");
+	fp = fopen("GodMode9_ntr.firm","rb");
 	if (fp == NULL)
 	{
-		iprintf("\ncould not find boot9strap_ntr.firm\n");
+		iprintf("\ncould not find GodMode9_ntr.firm\n");
 		waitButtonA();
 		return 0;
 	}
@@ -244,13 +242,55 @@ int main(void) {
 	iprintf("press A to inject ntrboot\n");
 	waitButtonA();
 
-	iprintf("blowfish:\n");
-	write_to_flash(0x1000, (u8*)blowfish_retail_bin, 0x1048);
-	iprintf("firm:\n");
-	write_to_flash(0x9E00, firm, firm_size);
+	memcpy(flash_buffer + 0x1000, (u8*)blowfish_retail_bin, 0x1048);
+	memcpy(flash_buffer + 0x9E00, firm, firm_size);
 
-	iprintf("injection complete.\n");
+	iprintf("erasing");
+
+	// erase it all
+	for (int i = 0; i < 0x200; i++)
+	{
+		iprintf("\rerasing %d / %d", i, 0x200);
+		write_card(i * 0x10000, 0, 0x200, 0xE0);
+	}
+
+	iprintf("\nwriting");
+
+	u32 *write_buffer = (u32*)flash_buffer;
+	u32 blocks = 0x1000;
+	for (int block = 0; block < blocks; block++)
+	{
+		iprintf("\rwriting %d / %ld", block, blocks);
+
+		write_card(block * 0x200, write_buffer, 0x80, 0xF0);
+		write_buffer += 0x80;
+	}
+
+	iprintf("\ninjection complete.\n");
 	waitButtonA();
+
+
+
+
+
+
+	free(flash_buffer);
+
+	flash_buffer = (u8*) malloc(0x200 * 0x1000);
+
+	iprintf("1. reading flash\n");
+	read_blocks(0xF0, 0, flash_buffer, 0x1000);
+	display_hex(flash_buffer, 1);
+
+	iprintf("2. saving flash...");
+	
+	fp = fopen("after_flash.bin", "wb");
+	fwrite(flash_buffer, 0x200, 0x1000, fp);
+	fclose(fp);
+
+	free(flash_buffer);
+
+	iprintf(" done\n\n");
 
 	return 0;
 }
