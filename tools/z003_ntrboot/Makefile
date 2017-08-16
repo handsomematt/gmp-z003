@@ -115,8 +115,8 @@ $(OUTPUT).nds	: 	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 
 $(OUTPUT).nds: $(OUTPUT).elf
-	ndstool -c $@  -b $(GAME_ICON) "z003rwtest;" -9 $(OUTPUT).elf
-	@echo built PROPERLY ... $(notdir $@)
+	ndstool -c $(OUTPUT)_ds.nds -9 $(OUTPUT).elf -h 0x200
+	ndstool -c $(OUTPUT)_dsi.nds -9 $(OUTPUT).elf
  
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin

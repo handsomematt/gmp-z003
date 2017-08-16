@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include "cart_commands.h"
 #include "blowfish_retail_bin.h"
+
+#define FILENAME_FIRM "inject_ntr.firm"
+#define FILENAME_FLASH_BACKUP "flash_backup.nds"
 
 void waitButtonA() {
 	while(1) {
@@ -14,97 +18,6 @@ void waitButtonA() {
 	}
 }
 
-void ioM3CardWaitReady(u32 flags, u8 *command)
-{
-  bool ready = false;
-
-  do {
-    cardWriteCommand(command);
-    REG_ROMCTRL = flags;
-    do {
-      if (REG_ROMCTRL & CARD_DATA_READY)
-        if (!CARD_DATA_RD) ready = true;
-    } while (REG_ROMCTRL & CARD_BUSY);
-  } while (!ready);
-}
-
-void read_card(u32 address, u32 *destination, u32 length, u8 type)
-{
-  u8 command[8];
-
-  command[7] = 0xC9;
-  command[6] = (address >> 24) & 0xff;
-  command[5] = (address >> 16) & 0xff;
-  command[4] = (address >> 8)  & 0xff;
-  command[3] =  address        & 0xff;
-  command[2] = type; // SW
-  command[1] = 0;
-  command[0] = 0;
-  ioM3CardWaitReady(0xa7586000, command);
-
-  command[7] = 0xCA;
-  cardPolledTransfer(0xa1586000, destination, length, command);
-}
-
-void write_card(u32 address, u32 *source, u32 length, u8 type)
-{
-  u8 command[8];
-  u32 data = 0;
-
-  command[7] = 0xC5; // GMP-Z003
-  command[6] = (address >> 24) & 0xff;
-  command[5] = (address >> 16) & 0xff;
-  command[4] = (address >> 8)  & 0xff;
-  command[3] =  address        & 0xff;
-  command[2] = type;
-  command[1] = 0;
-  command[0] = 0;
-  cardWriteCommand(command);
-  REG_ROMCTRL = 0xe1586000;
-  u32 * target = source + length;
-  do {
-    // Write data if ready
-    if (REG_ROMCTRL & CARD_DATA_READY) {
-      if (source < target) {
-        if ((u32)source & 0x03)
-          data = ((uint8*)source)[0] | (((uint8*)source)[1] << 8) | (((uint8*)source)[2] << 16) | (((uint8*)source)[3] << 24);
-        else
-          data = *source;
-      }
-      source++;
-      CARD_DATA_RD = data;
-    }
-  } while (REG_ROMCTRL & CARD_BUSY);
-  command[7] = 0xC6; // GMP-Z003
-  ioM3CardWaitReady(0xa7586000, command);
-}
-
-u16 setup_card()
-{
-	u8 cmdb8[8] = {0, 0, 0, 0, 0, 0, 0, 0xb8};
-	u8 cmdb4[8] = {0, 0, 0, 0x0a, 0xa0, 0x55, 0xaa, 0xb4};
-	u8 cmdb0[8] = {0, 0, 0, 0, 0, 0, 0, 0xb0};
-	u32 ret;
-
-	cardPolledTransfer(0xa7586000, &ret, 1, cmdb8);
-	cardPolledTransfer(0xa7586000, &ret, 1, cmdb4);
-	cardPolledTransfer(0xa7586000, &ret, 1, cmdb4);
-	cardPolledTransfer(0xa7586000, &ret, 1, cmdb0);
-
-	return (u16)ret;
-}
-
-void read_blocks(u8 type, u32 offset, u8 *buffer, u32 blocks)
-{
-	u32 *u32_buffer = (u32*)buffer; // i am bad at pointers
-
-	for (int block = 0; block < blocks; block++)
-	{
-		read_card(offset, u32_buffer, 0x80, type);
-		offset += 0x200;
-		u32_buffer += 0x80;
-	}
-}
 
 void display_hex(u8 *buffer, int lines)
 {
@@ -120,121 +33,58 @@ void display_hex(u8 *buffer, int lines)
 	}
 }
 
-void write_to_flash(u32 offset, u8 *source, u32 length)
-{
-	// i'm sure you can bitwise this but i'm too dumb
-	u32 blocks;
-	if (length % 0x200)
-		blocks = ((length / 0x200) + 1);
-	else
-		blocks = length / 0x200;
-
-	iprintf("length %04lX = %04lX blocks\nreading...\n", length, blocks);
-
-	u8 *buffer = (u8*) malloc(0x200 * blocks);
-
-	// read
-	u32 read_offset = offset;
-	u32 *read_buffer = (u32*)buffer;
-
-	for (int block = 0; block < blocks; block++)
-	{
-		read_card(read_offset, read_buffer, 0x80, 0xF0);
-		read_offset += 0x200;
-		read_buffer += 0x80;
-	}
-
-	iprintf("erasing... ");
-
-	// erase
-	u32 erase_offset = offset;
-	for (int block = 0; block < blocks; block++)
-	{
-		write_card(erase_offset, 0, 0x80, 0xE0);
-		erase_offset += 0x200;
-		iprintf(".");
-	}
-
-	iprintf("\ncopying...\n");
-	memcpy(buffer, source, length);
-
-	iprintf("writing... ");
-
-	// write
-	u32 write_offset = offset;
-	u32 *write_buffer = (u32*)buffer;
-	for (int block = 0; block < blocks; block++)
-	{
-		write_card(write_offset, write_buffer, 0x80, 0xF0);
-		write_offset += 0x200;
-		write_buffer += 0x80;
-		iprintf(".");
-	}
-
-	iprintf("\n");
-}
-
-u32 getChipID()
-{
-	u8 cmdChipID[8] = {0, 0, 0, 0, 0, 0, 0, 0x90};
-	u32 ret;
-
-	cardPolledTransfer(0xa7586000, &ret, 1, cmdChipID);
-	return ret;
-}
-
-
 int main(void) {
 	consoleDemoInit();
 	sysSetBusOwners(true, true);
 
 	if(!fatInitDefault())
 	{
-		iprintf("fatInitDefault failed\n");
+		iprintf("Failed to initalize fat device.\n");
 		return 0;
 	}
 
-	iprintf("m3i gmp-z003 ntrboot flasher\n");
-	iprintf("may brick, be careful :)\n");
+	iprintf("M3i GMP-Z003 ntrboot injector\n");
 
 	u16 cardInfo = setup_card();
-	iprintf("card Type: %04X\n", cardInfo);
-
-	// run it twice because fuCK u
-	cardInfo = setup_card();
-	iprintf("card Type: %04X\n", cardInfo);
-
-	iprintf("chipid: %08lX\n", getChipID());
+	iprintf("cardcmdb0: %04X\n", cardInfo);
 
 	if (cardInfo != 0x5AA5)
 	{
 		iprintf("error, expected 0x5AA5\n");
+		iprintf("your card is incompatible - press A to exit\n");
 		waitButtonA();
 		return 0;
 	}
 
-	iprintf("press A to begin\n\n");
-	waitButtonA();
+	iprintf("warning: your device will become unusable as a flashcart until you reflash it back\n\n");
+
+	iprintf("press A to continue, press B to exit\n\n");
+	while(1) {
+		scanKeys();
+		swiWaitForVBlank();
+		if (keysDown() & KEY_A) break;
+		if (keysDown() & KEY_B) return 0;
+	}
+	
+	iprintf("reading flash...\n\n");
 
 	u8 *flash_buffer = (u8*) malloc(0x200 * 0x1000);
-
-	iprintf("reading flash\n");
 	read_blocks(0xF0, 0, flash_buffer, 0x1000);
-	display_hex(flash_buffer, 1);
+	display_hex(flash_buffer, 4);
 
-	iprintf("saving flash...");
+	iprintf("backing up to file %s... ", FILENAME_FLASH_BACKUP);
 	
-	FILE* fp = fopen("before_flash.bin", "wb");
+	FILE* fp = fopen(FILENAME_FLASH_BACKUP, "wb");
 	fwrite(flash_buffer, 0x200, 0x1000, fp);
 	fclose(fp);
 
-	iprintf(" done\n\n");
+	iprintf("done\n");
 
-	iprintf("reading ntr firm file");
-	fp = fopen("GodMode9_ntr.firm","rb");
+	iprintf("reading ntr firm file... ");
+	fp = fopen(FILENAME_FIRM,"rb");
 	if (fp == NULL)
 	{
-		iprintf("\ncould not find GodMode9_ntr.firm\n");
+		iprintf("\ncould not find %s\n", FILENAME_FIRM);
 		waitButtonA();
 		return 0;
 	}
@@ -247,59 +97,40 @@ int main(void) {
     fread(firm, 1, firm_size, fp);
 	fclose(fp);
 
-	iprintf(" done\n");
+	iprintf("done\n\n");
 
-	iprintf("press A to inject ntrboot\n");
-	waitButtonA();
+	iprintf("injecting ntrboot\n\n");
 
-	memcpy(flash_buffer + 0x1000, (u8*)blowfish_retail_bin, 0x1048);
+	memcpy(flash_buffer + 0x1000, (u8*)blowfish_retail_bin+0x48, 0x1000);
+	memcpy(flash_buffer + 0x2000, (u8*)blowfish_retail_bin, 0x48);
+
 	memcpy(flash_buffer + 0x7E00, firm, firm_size);
 
-	iprintf("erasing");
+	iprintf("erasing flash ");
 
 	// erase it all
 	for (int i = 0; i < 0x200; i++)
 	{
-		iprintf("\rerasing %d / %d", i, 0x200);
+		iprintf("\rerasing flash %d / %d", i+1, 0x200);
 		write_card(i * 0x10000, 0, 0x200, 0xE0);
 	}
 
-	iprintf("\nwriting");
+	iprintf("\nwriting flash ");
 
 	u32 *write_buffer = (u32*)flash_buffer;
 	u32 blocks = 0x1000;
 	for (int block = 0; block < blocks; block++)
 	{
-		iprintf("\rwriting %d / %ld", block, blocks);
+		iprintf("\rwriting flash %d / %ld", block+1, blocks);
 
 		write_card(block * 0x200, write_buffer, 0x80, 0xF0);
 		write_buffer += 0x80;
 	}
 
-	iprintf("\ninjection complete.\n");
+	free(flash_buffer);
+
+	iprintf("\n\ninjection complete\n");
 	waitButtonA();
-
-
-
-
-
-
-	free(flash_buffer);
-
-	flash_buffer = (u8*) malloc(0x200 * 0x1000);
-
-	read_blocks(0xF0, 0, flash_buffer, 0x1000);
-	display_hex(flash_buffer, 1);
-
-	iprintf("saving result flash...");
-	
-	fp = fopen("after_flash.bin", "wb");
-	fwrite(flash_buffer, 0x200, 0x1000, fp);
-	fclose(fp);
-
-	free(flash_buffer);
-
-	iprintf(" done\n\n");
 
 	return 0;
 }
